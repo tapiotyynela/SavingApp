@@ -28,7 +28,7 @@ const Savings = () => {
   };
 
   return (
-    <SafeAreaView style={backgroundStyle}>
+    <SafeAreaView style={{ backgroundColor: '#327A7A' }}>
       <App />
     </SafeAreaView>
   );

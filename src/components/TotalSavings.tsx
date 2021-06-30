@@ -1,52 +1,38 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Text, Dimensions, TouchableOpacity, Modal, TextInput } from 'react-native'
+import { View, StyleSheet, Text, Dimensions, TouchableOpacity, Modal, TextInput, Alert } from 'react-native'
 import * as Progress from 'react-native-progress';
-import { getAllSavings, getAllGoals } from '../api/saving'
+import RNPickerSelect from 'react-native-picker-select';
+import { getAllSavings, getAllGoals, addNewSavingToGoal } from '../api/saving'
+import { Goal, Saving, DropDownValue, TotalSavingsProps } from '../interfaces/interfaces'
+import { Header } from 'react-native-elements';
 
 const width = Dimensions.get('screen').width
 const height = Dimensions.get('screen').height
 
-interface Goal {
-    id: number
-    name: string
-    moneygoal: number
-    adInfo: string
-}
-
-interface Saving {
-    amount: number
-    adInfo: string
-    goalid: number
-}
-
-const TotalSavings = () => {
-    const [savings, setSavings] = useState<Saving[]>([])
-    const [goals, setGoals] = useState<Goal[]>([])
-    const [saving, setSaving] = useState(0)
-    const [totalSavings, setTotalSavings] = useState(0)
-
-    useEffect(() => {
-        getSavingsAndGoals()
-        countTotalSavings()
-    }, [savings])
-
-    const getSavingsAndGoals = async () => {
-        const savings = await getAllSavings()
-        const goals = await getAllGoals()
-        setSavings(savings)
-        setGoals(goals)
-    }
+const TotalSavings = (props: TotalSavingsProps) => {
+    const {
+        savings,
+        goals,
+        getSavingsAndGoals,
+        totalSavings
+    } = props
+    const [amount, setAmount] = useState('')
+    const [adInfo, setAdInfo] = useState('')
+    const [goalid, setGoalid] = useState(0)
+    const [dropDownValues, setDropDownValues] = useState<DropDownValue[]>([])
+    const [modalVisible, setModalVisible] = useState(false)
 
     const addSaving = () => {
-        console.log("SA", saving)
+        setModalVisible(true)
     }
 
-    const countTotalSavings = () => {
-        let savingTotalSum = 0
-        for (let i = 0; i < savings.length; i++) {
-            savingTotalSum = savingTotalSum + savings[i].amount
-        }
-        setTotalSavings(savingTotalSum)
+    const addNewSaving = async (data: Saving) => {
+        await addNewSavingToGoal(data)
+        setAdInfo('')
+        setGoalid(0)
+        setAmount('')
+        setModalVisible(false)
+        await getSavingsAndGoals()
     }
 
     const countProgress = (goal: number, savings: number, addedSaving?: number) => {
@@ -57,6 +43,21 @@ const TotalSavings = () => {
         } else {
             return savings / goal
         }
+    }
+
+    const handleGoalChange = (goalid: any) => {
+        setGoalid(goalid)
+    };
+
+    const openDropDown = () => {
+        const values = goals.map(goal => {
+            const data = {
+                label: goal.name,
+                value: goal.id,
+            }
+            return data
+        })
+        setDropDownValues(values)
     }
 
     const renderProgressForGoal = (goal: Goal, i: number) => {
@@ -75,8 +76,19 @@ const TotalSavings = () => {
         )
     }
 
+    const closeModal = () => {
+        setModalVisible(!modalVisible)
+    }
+
     return (
         <View style={{ alignItems: 'center', flex: 1, backgroundColor: '#327A7A' }}>
+            <Header placement='left'
+                centerComponent={{ text: 'Total Savings', style: { fontSize: 20 } }}
+                containerStyle={{
+                    backgroundColor: '#2E6767',
+                }}
+
+            />
             <View style={styles.circleContainer}>
                 <Text style={styles.savingText}>All savings</Text>
                 <Text style={styles.savingMoneyText}>{totalSavings} €</Text>
@@ -85,6 +97,96 @@ const TotalSavings = () => {
                 <TouchableOpacity style={styles.buttonContainer} onPress={addSaving}>
                     <Text style={styles.savingText}>Add saving</Text>
                 </TouchableOpacity>
+                <Modal
+                    animationType="slide"
+                    transparent={true}
+                    visible={modalVisible}
+                    onRequestClose={() => {
+                        Alert.alert("Modal has been closed.");
+                        setModalVisible(!modalVisible);
+                    }}
+                >
+                    <View style={styles.centeredView}>
+                        <View style={styles.modalView}>
+                            <Text style={{ fontSize: 30, marginBottom: 15 }}>New Saving</Text>
+                            <Text>Choose goal:</Text>
+                            <RNPickerSelect
+                                onValueChange={(value) => handleGoalChange(value)}
+                                items={dropDownValues}
+                                onOpen={openDropDown}
+                                style={{
+                                    inputIOS: {
+                                        backgroundColor: '#2E6767',
+                                        width: width / 1.5,
+                                        height: 50,
+                                        borderRadius: 8,
+                                        paddingLeft: 10,
+                                        paddingRight: 10,
+                                        marginBottom: 10
+                                    }
+                                }}
+                            />
+                            <Text>Amount:</Text>
+                            <TextInput
+                                onChangeText={text => setAmount(text)}
+                                value={amount}
+                                placeholder='Amount...'
+                                placeholderTextColor='lightgrey'
+                                keyboardType={'number-pad'}
+                                returnKeyType='done'
+                                style={{
+                                    backgroundColor: '#2E6767',
+                                    width: width / 1.5,
+                                    height: 50,
+                                    borderRadius: 8,
+                                    paddingLeft: 10,
+                                    paddingRight: 10,
+                                    marginBottom: 10,
+                                    color: 'white'
+                                }}
+                            />
+                            <Text>Additional info:</Text>
+                            <TextInput
+                                onChangeText={text => setAdInfo(text)}
+                                value={adInfo}
+                                placeholder='Additional info...'
+                                placeholderTextColor='lightgrey'
+                                returnKeyType='done'
+                                style={{
+                                    backgroundColor: '#2E6767',
+                                    width: width / 1.5,
+                                    height: 50,
+                                    borderRadius: 8,
+                                    paddingLeft: 10,
+                                    paddingRight: 10,
+                                    marginBottom: 10
+                                }}
+                            />
+                            <TextInput />
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-around', alignContent: 'space-around', width: width / 1.5 }}>
+                                <TouchableOpacity
+                                    onPress={() => closeModal()}
+                                    style={{ backgroundColor: '#D35C5C', padding: 10, width: '40%', borderRadius: 8, alignItems: 'center' }}
+                                >
+                                    <Text>Cancel</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    onPress={() => {
+                                        const data = {
+                                            goalid: goalid,
+                                            adinfo: adInfo,
+                                            amount: parseFloat(amount)
+                                        }
+                                        addNewSaving(data)
+                                    }}
+                                    style={{ backgroundColor: '#61B564', padding: 10, width: '40%', borderRadius: 8, alignItems: 'center' }}
+                                >
+                                    <Text>Save</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    </View>
+                </Modal>
                 <View>
                     {
                         goals.length > 0 ? (
@@ -101,7 +203,7 @@ const TotalSavings = () => {
 
 const styles = StyleSheet.create({
     circleContainer: {
-        marginTop: height / 8,
+        marginTop: '10%',
         width: width / 1.7,
         height: height / 4,
         borderRadius: 150,
@@ -150,11 +252,32 @@ const styles = StyleSheet.create({
         },
         shadowOpacity: 0.3,
     },
+    centeredView: {
+        flex: 1,
+        justifyContent: "center",
+        alignItems: "center",
+        marginTop: 22
+    },
+    modalView: {
+        margin: 20,
+        backgroundColor: "#497E7E",
+        borderRadius: 20,
+        padding: 35,
+        alignItems: "center",
+        shadowColor: "black",
+        shadowOffset: {
+            width: 2,
+            height: 2
+        },
+        shadowOpacity: 0.25,
+        shadowRadius: 4,
+        elevation: 5
+    },
     input: {
         marginTop: 20,
         padding: 7,
         borderRadius: 10,
-        backgroundColor: '#2E6767',
+        backgroundColor: 'blue',
         width: width / 2,
         color: 'white'
     },
